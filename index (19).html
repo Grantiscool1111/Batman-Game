@@ -1,298 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Batman Platformer</title>
-  <style>
-    canvas {
-      display: block;
-      margin: auto;
-      background: #87CEEB; /* Light sky blue */
-      border: 3px solid white;
-    }
-    #overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 800px;
-      height: 500px;
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      font-size: 24px;
-      font-family: sans-serif;
-    }
-    #livesDisplay {
-      position: absolute;
-      top: 10px;
-      left: 20px;
-      font-size: 20px;
-      font-weight: bold;
-      color: white;
-      font-family: sans-serif;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Batman Platformer</title>
+<style>
+  body {
+    margin: 0;
+    background: #ddd;
+    overflow: hidden;
+  }
+  canvas {
+    background: #aaa;
+    display: block;
+    margin: 0 auto;
+    border: 2px solid #444;
+  }
+  #livesDisplay {
+    font-family: Arial, sans-serif;
+    font-size: 18px;
+    color: #222;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    user-select: none;
+  }
+</style>
 </head>
 <body>
-<div id="livesDisplay"></div>
-<div id="overlay">
-  <div id="overlayText">🦇 Press ENTER to start the Batman game 🦇</div>
-</div>
+<div id="livesDisplay">Lives: 3</div>
 <canvas id="game" width="800" height="500"></canvas>
 
-<script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-const overlay = document.getElementById("overlay");
-const overlayText = document.getElementById("overlayText");
-const livesDisplay = document.getElementById("livesDisplay");
-
-let gameRunning = false;
-let gameOver = false;
-
-// Images
-const batmanImg = new Image();
-batmanImg.src = "dft3d53-e38f8b57-c4f6-4caf-990d-5db0dabb26c8.png";
-
-const enemyImg = new Image();
-enemyImg.src = "s-l400.jpg";
-
-const boomerangImg = new Image();
-boomerangImg.src = "images.jpeg";
-
-// Player
-let batman;
-
-// Boomerang
-let boomerang = null;
-
-// Platforms
-const gravity = 0.6;
-const platforms = [
-  { x: 0, y: 460, width: 800, height: 40 },
-  { x: 120, y: 350, width: 140, height: 20 },
-  { x: 300, y: 270, width: 150, height: 20 },
-  { x: 500, y: 180, width: 150, height: 20 },
-  { x: 650, y: 100, width: 100, height: 20 },
-  { x: 80, y: 150, width: 100, height: 20 }
-];
-
-// Enemies
-let enemies = [];
-
-// Controls
-const keys = {};
-document.addEventListener("keydown", e => {
-  keys[e.code] = true;
-  if (!gameRunning && e.code === "Enter") startGame();
-});
-document.addEventListener("keyup", e => keys[e.code] = false);
-
-// Mouse click to shoot boomerang
-canvas.addEventListener("click", e => {
-  if (!gameRunning || boomerang) return;
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-  const dx = mx - (batman.x + batman.width / 2);
-  const dy = my - (batman.y + batman.height / 2);
-  const angle = Math.atan2(dy, dx);
-  const speed = 8;
-  boomerang = {
-    x: batman.x + batman.width / 2,
-    y: batman.y + batman.height / 2,
-    width: 20, height: 10,
-    vx: Math.cos(angle) * speed,
-    vy: Math.sin(angle) * speed,
-    returning: false,
-    bounced: false
-  };
-});
-
-function startGame() {
-  gameRunning = true;
-  gameOver = false;
-  overlay.style.display = "none";
-  batman = {
-    x: 100, y: 100, width: 40, height: 60,
-    vx: 0, vy: 0, speed: 4, jump: -12,
-    onGround: false, lives: 3
-  };
-  enemies = [
-    { x: 140, y: 310, width: 40, height: 50, vx: 1.5, vy: 0, alive: true },
-    { x: 330, y: 230, width: 40, height: 50, vx: -1.2, vy: 0, alive: true },
-    { x: 530, y: 140, width: 40, height: 50, vx: 1.4, vy: 0, alive: true },
-    { x: 670, y: 60,  width: 40, height: 50, vx: -1.5, vy: 0, alive: true },
-    { x: 120, y: 100, width: 40, height: 50, vx: 1.6, vy: 0, alive: true }
-  ];
-  boomerang = null;
-}
-
-function update() {
-  if (!gameRunning) return;
-
-  batman.vx = 0;
-  if (keys["KeyA"]) batman.vx = -batman.speed;
-  if (keys["KeyD"]) batman.vx = batman.speed;
-  if (keys["KeyW"] && batman.onGround) {
-    batman.vy = batman.jump;
-    batman.onGround = false;
-  }
-
-  batman.vy += gravity;
-  batman.x += batman.vx;
-  batman.y += batman.vy;
-
-  // Platform collision
-  batman.onGround = false;
-  for (let p of platforms) {
-    const nextY = batman.y + batman.vy;
-    if (
-      batman.x + batman.width > p.x &&
-      batman.x < p.x + p.width &&
-      batman.y + batman.height <= p.y &&
-      nextY + batman.height >= p.y
-    ) {
-      batman.y = p.y - batman.height;
-      batman.vy = 0;
-      batman.onGround = true;
-    }
-  }
-
-  if (batman.x < 0) batman.x = 0;
-  if (batman.x + batman.width > canvas.width) batman.x = canvas.width - batman.width;
-  if (batman.y > canvas.height) {
-    batman.lives--;
-    if (batman.lives <= 0) return endGame(false);
-    batman.y = 0;
-  }
-
-  // Boomerang
-  if (boomerang) {
-    boomerang.x += boomerang.vx;
-    boomerang.y += boomerang.vy;
-
-    for (let p of platforms) {
-      if (!boomerang.bounced &&
-          boomerang.x < p.x + p.width &&
-          boomerang.x + boomerang.width > p.x &&
-          boomerang.y < p.y + p.height &&
-          boomerang.y + boomerang.height > p.y) {
-        boomerang.vx *= -1;
-        boomerang.vy *= -1;
-        boomerang.bounced = true;
-        boomerang.returning = true;
-      }
-    }
-
-    if (!boomerang.bounced && (boomerang.x < 0 || boomerang.x > canvas.width)) {
-      boomerang.vx *= -1;
-      boomerang.vy *= -1;
-      boomerang.bounced = true;
-      boomerang.returning = true;
-    }
-
-    enemies.forEach(e => {
-      if (e.alive &&
-          boomerang.x < e.x + e.width &&
-          boomerang.x + boomerang.width > e.x &&
-          boomerang.y < e.y + e.height &&
-          boomerang.y + boomerang.height > e.y) {
-        e.alive = false;
-        boomerang.returning = true;
-        boomerang.vx *= -1;
-        boomerang.vy *= -1;
-      }
-    });
-
-    if (boomerang.returning) {
-      const dx = (batman.x + batman.width / 2) - boomerang.x;
-      const dy = (batman.y + batman.height / 2) - boomerang.y;
-      if (Math.sqrt(dx*dx + dy*dy) < 20) boomerang = null;
-    }
-  }
-
-  enemies.forEach(e => {
-    if (!e.alive) return;
-    e.vy += gravity;
-    e.x += e.vx;
-    e.y += e.vy;
-
-    for (let p of platforms) {
-      const nextY = e.y + e.vy;
-      if (
-        e.x + e.width > p.x &&
-        e.x < p.x + p.width &&
-        e.y + e.height <= p.y &&
-        nextY + e.height >= p.y
-      ) {
-        e.y = p.y - e.height;
-        e.vy = 0;
-      }
-    }
-
-    if (e.x < 0 || e.x + e.width > canvas.width) {
-      e.vx *= -1;
-    }
-
-    // Enemy hits player
-    if (
-      batman.x < e.x + e.width &&
-      batman.x + batman.width > e.x &&
-      batman.y < e.y + e.height &&
-      batman.y + batman.height > e.y
-    ) {
-      batman.lives--;
-      if (batman.lives <= 0) endGame(false);
-      else batman.x = 100;
-    }
-  });
-
-  if (enemies.every(e => !e.alive)) endGame(true);
-}
-
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  ctx.fillStyle = "gray";
-  platforms.forEach(p => ctx.fillRect(p.x, p.y, p.width, p.height));
-
-  ctx.drawImage(batmanImg, batman.x, batman.y, batman.width, batman.height);
-
-  enemies.forEach(e => {
-    if (e.alive) ctx.drawImage(enemyImg, e.x, e.y, e.width, e.height);
-  });
-
-  if (boomerang) {
-    ctx.save();
-    ctx.translate(boomerang.x + boomerang.width/2, boomerang.y + boomerang.height/2);
-    ctx.rotate(Math.atan2(boomerang.vy, boomerang.vx));
-    ctx.drawImage(boomerangImg, -boomerang.width/2, -boomerang.height/2, boomerang.width, boomerang.height);
-    ctx.restore();
-  }
-
-  if (gameRunning && batman) {
-    livesDisplay.textContent = `Lives: ${batman.lives}`;
-  }
-}
-
-function endGame(win) {
-  gameRunning = false;
-  gameOver = true;
-  overlay.style.display = "flex";
-  overlayText.textContent = win ? "🎉 You Win! Press ENTER to restart" : "💀 Game Over! Press ENTER to retry";
-}
-
-function gameLoop() {
-  update();
-  draw();
-  requestAnimationFrame(gameLoop);
-}
-
-gameLoop();
-</script>
+<script src="game.js"></script>
 </body>
 </html>
